@@ -2,20 +2,29 @@ var checkFile = 0;
 var names = [];
 var inputFiles = [];
 var checkOutput = 0;
+var endTasks = false;
 
 function handleFiles(files, nameTmp) {
   // console.log(" compare this inputFiles[0] with that 'files[0]' --", files[0]);    
-  var file = files[0];
-  var reader1 = new FileReader();
-  console.log("create FileReader for ", nameTmp);
-  reader1.onload = function(event) {
-    var inputData = event.target.result;
-    console.log("create inputData in handleFiles");
-    createEmscriptenFiles(inputData, nameTmp);
-    console.log("create createEmscriptenFiles for input ", nameTmp);
-    names.push(nameTmp);        
-  };        
-  reader1.readAsText(file);
+  createEmscriptenFiles(files, nameTmp);
+  names.push(nameTmp);
+
+  // var file = files[0];
+  // var reader = new FileReader();
+  // console.log("create FileReader for ", nameTmp);
+  // reader.onload = function(event) {
+  //   var inputData = event.target.result;
+
+  //   console.log("create inputData in handleFiles", inputData);
+  //   console.log("just data",file);
+  //   createEmscriptenFiles(inputData, nameTmp);
+  //   console.log("create createEmscriptenFiles for input ", nameTmp);
+    
+  //   // TODO: change for more than one task 
+  //   names.push(nameTmp);        
+  // };        
+  // reader.readAsText(file);
+
 }
 
 function starting() {
@@ -37,11 +46,21 @@ function createEmscriptenOutputFiles() {
   console.log("empty createEmscriptenOutputFiles", _outputFile.contents);
 }
 
-var op = 1;
-function runCalculate(op) {
+function parseOperation(stringOperation) {
+  if (stringOperation == "+") {
+    operationIndex = 1;
+  } else if (stringOperation == "-") {
+    operationIndex = 2;
+  } else if (stringOperation == "*") {
+    operationIndex = 3;
+  }
+  return operationIndex;
+}
+
+function runCalculate(operationIndex) {
   if (checkFile == 2) {
     document.getElementById("outputArea").value += " Calculate started \n";
-    var operation = op
+    var operation = operationIndex;
     // document.getElementById("template-select").value
     Module['callMain']([operation, names[0], names[1],"/output.txt"]);
     console.log("EXITSTATUS = ", EXITSTATUS);
@@ -97,18 +116,35 @@ Module['print'] = function(x) {
       document.getElementById("outputArea").value += "" + "\n";
    }
 };
+var iii = 0;
 
+function chainRun() {
+  // console.log("endTasks", endTasks);
+  while (endTasks == false) {
+    var mm = (endTasks == false);
+    console.log("endTasks 0 ", endTasks)
+    console.log("mm", mm)
+    runOneTask();
+    iii++;
+    console.log("iii", iii);
+    console.log("endTasks", endTasks);
+    // Stop to  next task TODO: change this loop from infinity
+    return;
+  }
+  return;
+}
 
-function globalRun() {
+function runOneTask(){
   var path1;
   var path2;
   var operation;
   var result_uri;
+  checkFile = 0;
 
   function ajaxRequest(url, type, data, callback, errorCallback) {
     if (!$.isFunction(callback)){
       callback = function(){
-       console.log("get without callback function")
+       console.log("request without callback function")
       }
     }  
     return $.ajax({
@@ -135,13 +171,20 @@ function globalRun() {
     path2 = task.matrix2;
     console.log("path2", path2)
     operation = task.operation;
-    result_uri = task.result_uri
+    result_uri = task.result_uri;
+    console.log("task", task, task.end)
+    if (task.end == "end") {
+      endTasks = true;
+    }
   }
 
   function recordInputFirst(response) {
     inputFiles[0] =  new Blob([response], {type: "text/plain"});
     // console.log(" compare this inputFiles[0] with that 'files[0]' --", inputFiles[0]);
-    handleFiles(inputFiles, "input1.txt");
+    
+    // handleFiles(inputFiles, "input1.txt");
+    handleFiles(response, "input1.txt");
+    
     // console.log(" End of first request file.");
     url = 'http://localhost:8800' + path2;
     ajaxRequest(url, "GET", "", recordToInputArray, errorRecordInput2);
@@ -152,7 +195,10 @@ function globalRun() {
           
     inputFiles[0] = new Blob([response], {type: "text/plain"});
     // console.log(" create blob with file argument : ", inputFiles[0]);
-    handleFiles(inputFiles, "input2.txt");
+    
+    // handleFiles(inputFiles, "input2.txt");
+    handleFiles(response, "input2.txt");
+    
     createEmscriptenOutputFiles();
     check();
     // console.log("end request file and calc 2");
@@ -173,8 +219,9 @@ function globalRun() {
   function check() {
     console.log("start check function.");
     if (checkFile === 2) {      
-      // do what you want with the result variable      
-      runCalculate(1);
+      // do what you want with the result variable
+      indOp = parseOperation(operation);      
+      runCalculate(indOp);
       // checkOutput1();
       prepareDownload();
       url = 'http://localhost:8800' + result_uri;
@@ -198,83 +245,9 @@ function globalRun() {
 
   starting();
   var url = 'http://localhost:8800/tasks';
-
-  // $.ajax({
-  //   url: 'http://localhost:8800/tasks',
-  //   type: 'GET',
-  //   async: false,
-  //   data: '',
-  //   success: function(response){
-  //     console.log("response for GET 'task' ", response);
-  //     task = JSON.parse(response);
-  //     console.log(" 'task' by json parse", task)
-  //     path1 = task.matrix1;
-  //     console.log("path1", path1)
-  //     path2 = task.matrix2;
-  //     console.log("path2", path2)
-  //     operation = task.operation;
-  //     result_uri = task.result_uri
-  //   },
-  //   error: function(){
-  //     console.log("ajax : request 'task' error");
-  //   }
-  // });
-
   ajaxRequest(url, "GET", "", parseTask, errorGetTask);
-
-
-
   url = 'http://localhost:8800' + path1;
   console.log("url", url);
-  
   ajaxRequest(url, "GET", "", recordInputFirst, errorRecordInput1);
-
-  // $.ajax({
-  //   url: url,
-  //   type: 'GET',
-  //   async: false,
-  //   data: '',
-  //   success: function(response){
-  //     // var blob = new Blob([response], {type: "text/plain"});
-  //     inputFiles[0] =  new Blob([response], {type: "text/plain"});
-  //     // console.log(" compare this inputFiles[0] with that 'files[0]' --", inputFiles[0]);
-  //     handleFiles(inputFiles, "input1.txt");
-  //     console.log(" End of first request file.");
-
-  //     url = 'http://localhost:8800' + path2;
-  //     // $.ajax({
-  //     //   url: url,
-  //     //   type: 'GET',
-  //     //   async: false,
-  //     //   data: '',
-  //     //   success: function(response){
-  //     //     console.log("start request file 2");
-          
-  //     //     inputFiles[0] = new Blob([response], {type: "text/plain"});
-  //     //     // console.log(" create blob with file argument : ", inputFiles[0]);
-  //     //     handleFiles(inputFiles, "input2.txt");
-  //     //     createEmscriptenOutputFiles();
-          
-          
-
-  //     //     check();
-  //     //     console.log("end request file and calc 2");
-          
-          
-  //     //     // console.log("inputFiles", inputFiles[0]);
-  //     //     // console.log("response data i : ", response);
-  //     //   },
-  //     //   // complete: function(xhr, status){
-  //     //   // },
-  //     //   error: function(){
-  //     //     console.log("ajax : request 2st argument error");
-  //     //   }
-  //     // });
-  //   },
-  //   error: function(){
-  //     console.log("ajax : request 1st argument error");
-  //   }
-  // });
-
-
+  // ajaxRequest(url, "GET", "", recordToInputArray, errorRecordInput2);
 };

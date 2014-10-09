@@ -30,7 +30,7 @@ class MainHandler(tornado.web.RequestHandler):
 
     def put(self):
         print "PUT by MainHandler"
-        file = open(os.path.abspath('.') + urlparse(self.request.uri).path, 'w') 
+        file = open(os.path.abspath('.') + urlparse(self.request.uri).path, 'w+') 
         print "self.request.body"
         download = tornado.escape.json_decode(self.request.body)
         file.write(download)
@@ -45,12 +45,23 @@ class TaskHandler(tornado.web.RequestHandler):
     def get(self):
 
         print "GET by TaskHandler"
-        if self.count_task <= len(self.tasks):
-            self.write(json.dumps(tasks[self.count_task]))
-            self.count_task = self.count_task + 1
-            self.finish()
+        if self.count_task > len(self.tasks):
+          print "!! There is end of tasks!!"
+
+        elif self.count_task == len(self.tasks):
+          print(len(self.tasks), "len");
+          task = tasks[self.count_task]
+          response_task = task.update({"end" : "end"}) 
+          self.write(json.dumps(response_task))
+          self.count_task = self.count_task + 1
+          self.finish()
         else :
-            print "!! There is end of tasks!!"
+          # task = tasks[self.count_task]
+          # response_task = task.update({"end" : "end"})
+          self.write(json.dumps(tasks[self.count_task]))
+          self.count_task = self.count_task + 1
+          self.finish()
+            
 
 class EachInputHandler(tornado.web.RequestHandler):
     def get(self):
@@ -79,17 +90,30 @@ class MainHandler2(tornado.web.RequestHandler):
 
 if __name__ == "__main__":
   tasks = [{
-   "matrix1": "/inputs/1-1.txt",
-   "matrix2": "/inputs/1-2.txt",
-   "operation": "+",
-   "result_uri": "/results/1.txt"
-  },
-  {
-   "matrix1": "/inputs/2-1.txt",
-   "matrix2": "/inputs/2-2.txt",
-   "operation": "+",
-   "result_uri": "/results/2.txt"
-  }] 
+      "matrix1": "/inputs/1-1.txt",
+      "matrix2": "/inputs/1-2.txt",
+      "operation": "+",
+      "result_uri": "/results/1.txt"
+    },
+    {
+      "matrix1": "/inputs/1-1.txt",
+      "matrix2": "/inputs/1-2.txt",
+      "operation": "-",
+      "result_uri": "/results/2.txt"
+    },
+    {
+      "matrix1": "/inputs/1-1.txt",
+      "matrix2": "/inputs/1-2.txt",
+      "operation": "*",
+      "result_uri": "/results/3.txt"
+    },
+    {
+      "matrix1": "/inputs/2-1.txt",
+      "matrix2": "/inputs/2-2.txt",
+      "operation": "+",
+      "result_uri": "/results/4.txt"
+    }
+  ] 
   count_task = 0
   application = tornado.web.Application([
     # (r"/index2.html", MainHandler, dict(tasks=tasks, count_task=count_task)),
